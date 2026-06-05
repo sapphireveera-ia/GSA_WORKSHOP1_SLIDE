@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt, Code, Launch! — GSA Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;700&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+/* ─── TOKENS ─── */
+:root {
+  --blue:   #4285F4;
+  --red:    #EA4335;
+  --yellow: #FBBC04;
+  --green:  #34A853;
+  --dark:   #202124;
+  --gray:   #5F6368;
+  --light:  #F8F9FA;
+  --border: #DADCE0;
+  --white:  #FFFFFF;
+  --shadow-sm: 0 1px 2px rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+  --shadow-md: 0 2px 6px rgba(60,64,67,.3), 0 4px 12px 3px rgba(60,64,67,.15);
+  --ff-display: 'Google Sans Display', 'Google Sans', Roboto, sans-serif;
+  --ff-body:    'Google Sans', Roboto, sans-serif;
+  --ff-mono:    'Roboto Mono', monospace;
+}
+
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #fff; color: var(--dark); font-family: var(--ff-body); }
+
+/* ─── GOOGLE TOP BAR ─── */
+.g-bar { position: fixed; top: 0; left: 0; right: 0; height: 5px; display: flex; z-index: 999; }
+.g-bar span { flex: 1; }
+.g-bar .b { background: var(--blue); }
+.g-bar .r { background: var(--red); }
+.g-bar .y { background: var(--yellow); }
+.g-bar .g { background: var(--green); }
+
+/* ─── SLIDE ENGINE ─── */
+#stage { position: relative; width: 100vw; height: 100vh; }
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(40px);
+  transition: opacity .35s ease, transform .35s ease;
+  padding: 60px 0 72px;
+  overflow: hidden;
+}
+.slide.active  { opacity: 1; transform: translateX(0);  pointer-events: auto; z-index: 10; }
+.slide.exiting { opacity: 0; transform: translateX(-40px); z-index: 9; }
+
+/* ─── NAV ─── */
+#nav {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border); z-index: 998;
+}
+.nav-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--white); cursor: pointer; color: var(--gray);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; font-size: 14px;
+}
+.nav-btn:hover:not(:disabled) { background: var(--blue); color: #fff; border-color: var(--blue); }
+.nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+#dots { display: flex; gap: 6px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; transition: all .25s; }
+.dot.active { width: 24px; border-radius: 4px; background: var(--blue); }
+#slide-label {
+  position: fixed; bottom: 20px; right: 20px; z-index: 999;
+  font-size: 12px; color: var(--gray); background: var(--white);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 4px 12px; font-family: var(--ff-body);
+}
+
+/* ─── UTILITIES ─── */
+.center { text-align: center; }
+.col { display: flex; flex-direction: column; }
+.row { display: flex; flex-direction: row; }
+.gap-4  { gap: 16px; }
+.gap-6  { gap: 24px; }
+.gap-8  { gap: 32px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-6 { margin-bottom: 24px; }
+.mb-8 { margin-bottom: 32px; }
+.mt-4 { margin-top: 16px; }
+.mt-6 { margin-top: 24px; }
+.mt-8 { margin-top: 32px; }
+.w-full { width: 100%; }
+.max-w-4xl { max-width: 880px; width: 100%; }
+.max-w-5xl { max-width: 1040px; width: 100%; }
+.px-10 { padding-left: 40px; padding-right: 40px; }
+
+.tag-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--gray);
+  border: 1.5px solid var(--border); border-radius: 20px;
+  padding: 4px 14px; margin-bottom: 16px;
+}
+.tag-pill .dot-sm { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+
+h1 { font-family: var(--ff-display); font-size: clamp(36px, 5vw, 64px); font-weight: 700; line-height: 1.1; letter-spacing: -.02em; color: var(--dark); }
+h2 { font-family: var(--ff-display); font-size: clamp(28px, 3.5vw, 48px); font-weight: 700; line-height: 1.15; letter-spacing: -.02em; color: var(--dark); }
+h3 { font-family: var(--ff-body); font-size: clamp(16px, 2vw, 22px); font-weight: 700; color: var(--dark); }
+p  { font-size: clamp(14px, 1.6vw, 18px); color: var(--gray); line-height: 1.6; }
+
+.card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+}
+.card-accent-top { border-top: 4px solid; }
+
+.chip {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.chip-blue   { background: #e8f0fe; color: var(--blue); }
+.chip-red    { background: #fce8e6; color: var(--red); }
+.chip-yellow { background: #fef7e0; color: #8d6700; }
+.chip-green  { background: #e6f4ea; color: var(--green); }
+
+.c-blue   { color: var(--blue); }
+.c-red    { color: var(--red); }
+.c-yellow { color: var(--yellow); }
+.c-green  { color: var(--green); }
+.c-gray   { color: var(--gray); }
+.c-dark   { color: var(--dark); }
+
+.bg-blue   { background: var(--blue); }
+.bg-red    { background: var(--red); }
+.bg-yellow { background: var(--yellow); }
+.bg-green  { background: var(--green); }
+.bg-dark   { background: var(--dark); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 28px; border-radius: 24px; font-size: 15px;
+  font-weight: 600; cursor: pointer; border: none;
+  font-family: var(--ff-body); transition: all .2s;
+}
+.btn-blue  { background: var(--blue); color: #fff; }
+.btn-blue:hover  { background: #3367d6; box-shadow: var(--shadow-md); }
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--dark); }
+.btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+
+pre.code-block {
+  background: #1e1e2e;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-family: var(--ff-mono);
+  font-size: 13.5px;
+  color: #cdd6f4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.7;
+  text-align: left;
+  position: relative;
+}
+pre.code-block .kw  { color: #89dceb; }
+pre.code-block .str { color: #a6e3a1; }
+pre.code-block .cm  { color: #6c7086; font-style: italic; }
+
+.copy-btn {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(255,255,255,.1); border: none;
+  color: #cdd6f4; border-radius: 6px; padding: 4px 10px;
+  font-size: 11px; cursor: pointer; font-family: var(--ff-body);
+  transition: background .2s;
+}
+.copy-btn:hover { background: rgba(255,255,255,.2); }
+.copy-btn.copied { color: #a6e3a1; }
+
+/* Step circle */
+.step-circle {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px; color: #fff;
+  flex-shrink: 0;
+  font-family: var(--ff-display);
+}
+
+/* Poll check animation */
+.poll-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px; border: 1.5px solid var(--border);
+  border-radius: 12px; cursor: pointer; transition: all .2s;
+  background: var(--white);
+}
+.poll-row:hover { border-color: var(--blue); background: #f0f4ff; }
+.poll-row.checked { border-color: var(--blue); background: #e8f0fe; }
+.poll-check {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--border); display: flex;
+  align-items: center; justify-content: center;
+  transition: all .2s; flex-shrink: 0;
+}
+.poll-row.checked .poll-check {
+  background: var(--blue); border-color: var(--blue); color: #fff;
+}
+.poll-text { font-size: 16px; font-weight: 500; color: var(--dark); }
+
+/* Timeline / flow arrow */
+.flow-arrow { font-size: 22px; color: var(--border); text-align: center; line-height: 1; }
+
+/* Hall of fame cards */
+.hof-card {
+  border-radius: 16px; overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  transition: transform .25s, box-shadow .25s;
+}
+.hof-card:hover { transform: translateY(-6px); box-shadow: 0 8px 24px rgba(60,64,67,.2); }
+.hof-preview {
+  height: 140px; display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; font-size: 40px;
+}
+.hof-info { padding: 14px 16px; }
+.hof-name { font-weight: 700; font-size: 14px; color: var(--dark); }
+.hof-desc { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+
+
+/* Keyframe animations */
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop      { 0% { transform: scale(.8); opacity: 0; } 80% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes pulse-ring { 0%,100%{box-shadow:0 0 0 0 rgba(66,133,244,.4)} 50%{box-shadow:0 0 0 12px rgba(66,133,244,0)} }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+.slide.active .anim-1 { animation: fadeUp .5s ease both; }
+.slide.active .anim-2 { animation: fadeUp .5s .1s ease both; }
+.slide.active .anim-3 { animation: fadeUp .5s .2s ease both; }
+.slide.active .anim-4 { animation: fadeUp .5s .3s ease both; }
+.slide.active .anim-5 { animation: fadeUp .5s .4s ease both; }
+.slide.active .anim-pop { animation: pop .45s .1s ease both; }
+
+/* Gradient mesh BG used in several slides */
+.mesh-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.mesh-bg .blob {
+  position: absolute; border-radius: 50%; filter: blur(80px); opacity: .07;
+}
+
+/* ─── SLIDE-SPECIFIC OVERRIDES ─── */
+
+/* Slide 1 – Cover */
+#s1 { background: var(--white); }
+#s1 .hero-title { font-size: clamp(40px, 6vw, 80px); }
+#s1 .subtitle  { font-size: clamp(18px, 2.5vw, 28px); color: var(--gray); font-weight: 400; }
+
+/* Slide 5 – WOW flow */
+.wow-flow {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.wow-box {
+  width: 300px; padding: 18px 24px; border-radius: 14px;
+  border: 2px solid var(--border); background: var(--white);
+  text-align: center; font-size: 15px; font-weight: 600; color: var(--dark);
+  box-shadow: var(--shadow-sm);
+}
+.wow-box.highlight { border-color: var(--blue); background: #e8f0fe; color: var(--blue); font-size: 17px; }
+.wow-box.final { border-color: var(--green); background: #e6f4ea; color: var(--green); }
+.wow-arrow { font-size: 26px; color: var(--blue); }
+
+/* Slide 9 – Live demo (light) */
+.demo-screen {
+  background: var(--light); border-radius: 14px;
+  border: 1.5px solid var(--border);
+  overflow: hidden; box-shadow: var(--shadow-md);
+}
+.demo-bar {
+  background: #f1f3f4; padding: 10px 16px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.demo-dot { width: 10px; height: 10px; border-radius: 50%; }
+.demo-url {
+  flex: 1; background: var(--white); border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 12px; font-size: 12px; color: var(--gray);
+  font-family: var(--ff-mono); margin-left: 8px;
+}
+.demo-body {
+  height: 300px; display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: var(--border); flex-direction: column; gap: 12px;
+  background: var(--white);
+}
+
+/* Slide 14 – Future vision (light) */
+.vision-box {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px;
+}
+.vision-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 16px; color: var(--dark); text-align: left;
+}
+.vision-item:last-child { border-bottom: none; }
+
+/* Slide 15 – Thank you */
+#s15 { background: var(--white); }
+/* Sprint challenge timer */
+#timer-display {
+  font-size: 48px; font-weight: 700; font-family: var(--ff-display);
+  color: var(--blue); letter-spacing: -.02em;
+}
+.timer-ring {
+  animation: pulse-ring 2s infinite;
+  border-radius: 50%;
+}
+
+
+.scrollable { overflow-y: auto; max-height: 52vh; }
+.scrollable::-webkit-scrollbar { width: 6px; }
+.scrollable::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Google top bar -->
+<div class="g-bar"><span class="b"></span><span class="r"></span><span class="y"></span><span class="g"></span></div>
+
+<div id="stage">
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 1 · COVER                              -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide active" id="s1">
+  <div class="mesh-bg">
+    <div class="blob" style="width:500px;height:500px;background:var(--blue);top:-150px;right:-100px;"></div>
+    <div class="blob" style="width:400px;height:400px;background:var(--green);bottom:-120px;left:-80px;"></div>
+    <div class="blob" style="width:300px;height:300px;background:var(--yellow);bottom:60px;right:200px;"></div>
+  </div>
+  <div class="col center max-w-4xl px-10" style="position:relative;z-index:1;">
+    <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-bottom:32px;" class="anim-1">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 92" style="height:22px;" aria-label="Google">
+        <path fill="#EA4335" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+        <path fill="#FBBC05" d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+        <path fill="#4285F4" d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 7.87 11.17 7.87 7.31 0 11.84-4.51 11.84-13v-3.19h-.34c-2.18 2.69-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-3.61h9.25zm-8.56 20.92c0-7.81-5.21-13.52-11.84-13.52-6.72 0-12.35 5.71-12.35 13.52 0 7.73 5.63 13.36 12.35 13.36 6.63 0 11.84-5.63 11.84-13.36z"/>
+        <path fill="#34A853" d="M225 3v65h-9.5V3h9.5z"/>
+        <path fill="#EA4335" d="M262.02 54.48l7.56 5.04c-2.44 3.61-8.32 9.83-18.48 9.83-12.6 0-22.01-9.74-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.98 14.11l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-23.27-7.98l19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z"/>
+        <path fill="#4285F4" d="M35.29 41.41V32h31.89c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.36 53.89.36 34.43.36 14.97 16.32-.5 35.48-.5c10.5 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.67.03z"/>
+      </svg>
+      <span style="font-size:14px;font-weight:600;color:var(--gray);letter-spacing:.06em;text-transform:uppercase;">Student Ambassador Program</span>
+    </div>
+    <div class="anim-1" style="margin-bottom:12px;">
+      <span style="font-size:clamp(48px,7vw,88px);font-family:var(--ff-display);font-weight:700;line-height:1;letter-spacing:-.03em;color:var(--dark);">
+        <span class="c-blue">P</span><span class="c-red">r</span><span class="c-yellow">o</span><span class="c-green">m</span><span class="c-blue">p</span><span class="c-red">t</span><span style="color:var(--dark)">, Code, Launch!</span>
+      </span>
+    </div>
+    <div class="anim-2" style="font-size:clamp(18px,2.5vw,28px);color:var(--gray);font-weight:400;margin-bottom:48px;line-height:1.4;">
+      Building Your Portfolio Website with <strong style="color:var(--blue);">Gemini Canvas</strong>
+    </div>
+    <div class="anim-3" style="display:inline-flex;align-items:center;gap:20px;padding:16px 28px;border:1.5px solid var(--border);border-radius:40px;background:rgba(255,255,255,.8);backdrop-filter:blur(8px);">
+      <div class="col" style="align-items:flex-start;">
+        <span style="font-size:18px;font-weight:700;color:var(--dark);">Safira Nur Azkia</span>
+        <span style="font-size:13px;color:var(--gray);margin-top:2px;">Google Student Ambassador · GSAID261639</span>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div class="col" style="align-items:flex-start;">
+        <span style="font-size:13px;color:var(--gray);">📅 Sabtu, 6 Juni 2026</span>
+        <span style="font-size:13px;color:var(--gray);margin-top:2px;">⏱ 14:15 WIB · Ruang B3-302</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 2 · QUICK POLL                         -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s2">
+  <div class="col max-w-4xl px-10 w-full">
+    <div class="tag-pill anim-1"><span class="dot-sm" style="background:var(--red);"></span> Ice Breaker · 2 menit</div>
+    <h2 class="anim-1 mb-2">Siapa Kamu? 🙋</h2>
+    <p class="anim-2 mb-6">Angkat tangan atau klik yang sesuai denganmu!</p>
+    <div class="col gap-4 anim-3">
+      <div class="poll-row" onclick="togglePoll(this)">
+        <div class="poll-check"><i class="fa-solid fa-check" style="font-size:12px;"></i></div>
+        <span class="poll-text">✋ Saya sudah punya portfolio website</span>
+        <span class="chip chip-blue" style="margin-left:auto;">Existing</span>
+      </div>
+      <div class="poll-row" onclick="togglePoll(this)">
+        <div class="poll-check"><i class="fa-solid fa-check" style="font-size:12px;"></i></div>
+        <span class="poll-text">💻 Saya pernah membuat website sebelumnya</span>
+        <span class="chip chip-green" style="margin-left:auto;">Dev</span>
+      </div>
+      <div class="poll-row" onclick="togglePoll(this)">
+        <div class="poll-check"><i class="fa-solid fa-check" style="font-size:12px;"></i></div>
+        <span class="poll-text">🎯 Saya ingin magang atau beasiswa tahun ini</span>
+        <span class="chip chip-yellow" style="margin-left:auto;">Aspiring</span>
+      </div>
+      <div class="poll-row" onclick="togglePoll(this)">
+        <div class="poll-check"><i class="fa-solid fa-check" style="font-size:12px;"></i></div>
+        <span class="poll-text">✨ Saya sudah pernah menggunakan Gemini AI</span>
+        <span class="chip chip-red" style="margin-left:auto;">AI User</span>
+      </div>
+    </div>
+    <p class="anim-4 mt-6" style="font-size:14px;font-style:italic;">💡 Fasilitator: baca hasil polling untuk mengetahui baseline peserta sebelum melanjutkan.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 3 · WHY PORTFOLIO MATTERS              -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s3">
+  <div class="col max-w-5xl px-10 w-full">
+    <div class="tag-pill anim-1"><span class="dot-sm" style="background:var(--red);"></span> Konteks · 5 menit</div>
+    <h2 class="anim-1 mb-2">Mengapa Portfolio <span class="c-red">Sangat Penting?</span></h2>
+    <p class="anim-2 mb-6">Di era digital, portfolio bukan opsional — ini adalah kartu namamu yang bekerja 24 jam.</p>
+    <div class="row gap-4 anim-3" style="flex-wrap:wrap;">
+      <div class="card card-accent-top" style="border-color:var(--blue);flex:1;min-width:160px;">
+        <div style="font-size:28px;margin-bottom:10px;">🎯</div>
+        <h3 style="color:var(--blue);margin-bottom:6px;">Personal Branding</h3>
+        <p style="font-size:14px;">Tunjukkan siapa kamu sebelum mereka bertanya.</p>
+      </div>
+      <div class="card card-accent-top" style="border-color:var(--green);flex:1;min-width:160px;">
+        <div style="font-size:28px;margin-bottom:10px;">💼</div>
+        <h3 style="color:var(--green);margin-bottom:6px;">Magang & Karier</h3>
+        <p style="font-size:14px;">Rekruter melihat portofolio <em>sebelum</em> CV.</p>
+      </div>
+      <div class="card card-accent-top" style="border-color:var(--yellow);flex:1;min-width:160px;">
+        <div style="font-size:28px;margin-bottom:10px;">🏆</div>
+        <h3 style="color:#8d6700;margin-bottom:6px;">Beasiswa</h3>
+        <p style="font-size:14px;">Buktikan pencapaianmu secara visual & terstruktur.</p>
+      </div>
+      <div class="card card-accent-top" style="border-color:var(--red);flex:1;min-width:160px;">
+        <div style="font-size:28px;margin-bottom:10px;">🚀</div>
+        <h3 style="color:var(--red);margin-bottom:6px;">Kompetisi</h3>
+        <p style="font-size:14px;">Portfolio = bukti nyata kemampuanmu.</p>
+      </div>
+    </div>
+    <div class="anim-4 mt-6" style="background:#fef7e0;border:1.5px solid #fde293;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;">
+      <span style="font-size:24px;">💡</span>
+      <p style="color:#8d6700;font-size:14px;font-weight:500;margin:0;"><strong>Fakta:</strong> 75% perekrut menyatakan portfolio online meningkatkan peluang kandidat dipilih — bahkan untuk fresh graduate tanpa pengalaman kerja.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 4 · PORTFOLIO HALL OF FAME             -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s4">
+  <div class="col max-w-5xl px-10 w-full">
+
+    <div class="tag-pill anim-1">
+      <span class="dot-sm" style="background:var(--yellow);"></span>
+      Inspirasi · 4 menit
+    </div>
+
+    <h2 class="anim-1 mb-2">
+      Portfolio <span class="c-yellow">Hall of Fame</span> 🏛️
+    </h2>
+
+    <p class="anim-2 mb-6">
+      Beberapa portfolio dengan pendekatan yang berbeda-beda.
+      Tidak harus meniru, tapi bisa jadi inspirasi untuk menemukan gaya kalian sendiri ✨
+    </p>
+
+    <div class="row gap-6 anim-3" style="justify-content:center;">
+
+      <!-- Bruno Simon -->
+      <div class="hof-card" style="width:220px;">
+        <div class="hof-preview" style="background:linear-gradient(135deg,#1a1a2e,#16213e);">
+          <span>🎮</span>
+
+          <div style="position:absolute;bottom:10px;right:10px;">
+            <a href="https://bruno-simon.com"
+               target="_blank"
+               style="text-decoration:none;">
+              <span class="chip chip-blue"
+                    style="font-size:11px;cursor:pointer;">
+                Visit ↗
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <div class="hof-info">
+          <div class="hof-name">Creative Portfolio</div>
+          <div class="hof-desc">
+            Interactive · 3D Experience · Memorable
+          </div>
+        </div>
+      </div>
+
+      <!-- Brittany Chiang -->
+      <div class="hof-card" style="width:220px;">
+        <div class="hof-preview" style="background:linear-gradient(135deg,#e8f0fe,#c5d8fd);">
+          <span>💻</span>
+
+          <div style="position:absolute;bottom:10px;right:10px;">
+            <a href="https://brittanychiang.com"
+               target="_blank"
+               style="text-decoration:none;">
+              <span class="chip chip-green"
+                    style="font-size:11px;cursor:pointer;">
+                Visit ↗
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <div class="hof-info">
+          <div class="hof-name">Dev Portfolio</div>
+          <div class="hof-desc">
+            Clean · Projects Showcase · Developer Focus
+          </div>
+        </div>
+      </div>
+
+      <!-- Adham Dannaway -->
+      <div class="hof-card" style="width:220px;">
+        <div class="hof-preview" style="background:linear-gradient(135deg,#fef7e0,#fde293);">
+          <span>📊</span>
+
+          <div style="position:absolute;bottom:10px;right:10px;">
+            <a href="https://www.adhamdannaway.com"
+               target="_blank"
+               style="text-decoration:none;">
+              <span class="chip chip-yellow"
+                    style="font-size:11px;cursor:pointer;">
+                Visit ↗
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <div class="hof-info">
+          <div class="hof-name">Professional Portfolio</div>
+          <div class="hof-desc">
+            Professional · Case Studies · Premium Feel
+          </div>
+        </div>
+      </div>
+
+      <!-- Sean Halpin -->
+      <div class="hof-card" style="width:220px;">
+        <div class="hof-preview" style="background:linear-gradient(135deg,#e6f4ea,#b8e0c0);">
+          <span>✨</span>
+
+          <div style="position:absolute;bottom:10px;right:10px;">
+            <a href="https://www.seanhalpin.design"
+               target="_blank"
+               style="text-decoration:none;">
+              <span class="chip chip-green"
+                    style="font-size:11px;cursor:pointer;">
+                Visit ↗
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <div class="hof-info">
+          <div class="hof-name">Storytelling Portfolio</div>
+          <div class="hof-desc">
+            Personal · Friendly · Strong Branding
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="center anim-4 mt-6"
+       style="font-size:14px;color:var(--gray);font-style:italic;">
+      💡 Tidak ada portfolio yang "paling benar". Yang penting adalah bagaimana portfolio tersebut merepresentasikan diri kita.
+    </p>
+
+  </div>
+</div>
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 5 · CAN AI REALLY BUILD A WEBSITE?     -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s5">
+  <div class="row max-w-5xl px-10 w-full gap-6" style="align-items:center;">
+    <div class="col" style="flex:1;min-width:0;">
+      <div class="tag-pill anim-1"><span class="dot-sm" style="background:var(--blue);"></span> WOW Moment · 3 menit</div>
+      <h2 class="anim-1 mb-3" style="font-size:clamp(22px,3vw,38px);">Bisakah AI <span class="c-blue">Benar-benar</span> Membuat Website? 🤯</h2>
+      <p class="anim-2 mb-4" style="font-size:15px;">Jawaban singkat: <strong>Ya.</strong> Dan ini caranya — hanya 3 langkah:</p>
+      <div class="wow-flow anim-3">
+        <div class="wow-box" style="border-color:var(--border);color:var(--gray);padding:12px 20px;">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Input kamu</span><br>
+          <span style="font-size:14px;margin-top:4px;display:block;">✍️ Satu kalimat prompt sederhana</span>
+        </div>
+        <div class="wow-arrow" style="font-size:18px;">↓</div>
+        <div class="wow-box highlight" style="padding:12px 20px;">
+          <span style="font-size:14px;font-weight:700;">✨ Gemini Canvas</span>
+        </div>
+        <div class="wow-arrow" style="font-size:18px;">↓</div>
+        <div class="wow-box final" style="padding:12px 20px;">
+          <span style="font-size:14px;">🌐 Portfolio Website — <em>langsung jadi!</em></span>
+        </div>
+      </div>
+    </div>
+    <div class="col anim-4" style="flex:1;min-width:0;gap:12px;">
+      <div style="background:#1e1e2e;border-radius:14px;padding:16px 18px;">
+        <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6c7086;margin-bottom:8px;">📝 Contoh prompt:</div>
+        <p style="font-family:var(--ff-mono);font-size:12.5px;color:#cdd6f4;line-height:1.65;margin:0;">
+          <span style="color:#89dceb;">"Buat</span> website portfolio untuk mahasiswa Teknik Informatika bernama <span style="color:#a6e3a1;">Sarah</span>. Tampilkan Hero, About, Skills, dan Contact. Gunakan warna <span style="color:#89dceb;">biru modern</span> dengan CSS inline."
+        </p>
+      </div>
+      <div style="background:#e6f4ea;border:1.5px solid var(--green);border-radius:12px;padding:13px 16px;display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:20px;flex-shrink:0;">✅</span>
+        <p style="margin:0;font-size:13px;color:#2d6a3f;"><strong>Hasilnya?</strong> HTML + CSS lengkap siap dibuka di browser. Tidak perlu install apapun.</p>
+      </div>
+      <div style="background:#e8f0fe;border:1.5px solid var(--blue);border-radius:12px;padding:13px 16px;display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:20px;flex-shrink:0;">🔁</span>
+        <p style="margin:0;font-size:13px;color:#1a56db;"><strong>Tidak suka?</strong> Tinggal bilang "ubah warna jadi hijau" — Gemini langsung revisi!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 6 · MEET GEMINI CANVAS                 -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s6">
+  <div class="row max-w-5xl px-10 w-full gap-8" style="align-items:center;">
+    <div class="col" style="flex:1;">
+      <div class="tag-pill anim-1"><span class="dot-sm" style="background:var(--blue);"></span> Tool Overview · 5 menit</div>
+      <h2 class="anim-1 mb-4">Meet <span class="c-blue">Gemini Canvas</span> 🎨</h2>
+      <p class="anim-2 mb-6">AI coding assistant dari Google yang bisa membuat, mengedit, dan preview website — langsung di browser.</p>
+      <div class="col gap-4 anim-3">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div class="step-circle" style="background:var(--blue);width:36px;height:36px;font-size:14px;">1</div>
+          <div><h3 style="margin-bottom:4px;">Cara Akses</h3><p style="font-size:14px;">Buka <a href="https://gemini.google.com" target="_blank" style="color:var(--blue);font-weight:600;">gemini.google.com</a> → Klik <strong>"Canvas"</strong> di sidebar → Mulai chat!</p></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div class="step-circle" style="background:var(--red);width:36px;height:36px;font-size:14px;">2</div>
+          <div><h3 style="margin-bottom:4px;">Fitur Utama</h3><p style="font-size:14px;">Generate kode · Edit interaktif · Live Preview · Export langsung</p></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div class="step-circle" style="background:var(--green);width:36px;height:36px;font-size:14px;">3</div>
+          <div><h3 style="margin-bottom:4px;">Keunggulan vs Coding Manual</h3><p style="font-size:14px;">Tidak perlu setup · Tidak perlu hafal sintaks · Revisi dengan bahasa biasa</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="col anim-4" style="flex:1;gap:12px;">
+      <div style="background:var(--dark);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md);">
+        <div style="background:#2d2d3f;padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57;"></div>
+          <div style="width:10px;height:10px;border-radius:50%;background:#febc2e;"></div>
+          <div style="width:10px;height:10px;border-radius:50%;background:#28c840;"></div>
+          <span style="margin-left:8px;font-size:11px;color:rgba(255,255,255,.4);font-family:var(--ff-mono);">gemini.google.com/canvas</span>
+        </div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.05);border-radius:10px;border:1px solid rgba(255,255,255,.08);">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" style="height:28px;">
+            <span style="font-size:14px;color:rgba(255,255,255,.75);">Halo! Saya Gemini. Apa yang ingin kita buat hari ini?</span>
+          </div>
+          <div style="background:rgba(66,133,244,.15);border:1px solid rgba(66,133,244,.3);border-radius:10px;padding:12px;">
+            <span style="font-size:13px;color:rgba(255,255,255,.6);font-family:var(--ff-mono);">💬 "Buat portfolio website untuk saya..."</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:rgba(52,168,83,.15);border:1px solid rgba(52,168,83,.25);border-radius:8px;padding:10px;text-align:center;font-size:12px;color:#a6e3a1;">📄 Code Panel</div>
+            <div style="background:rgba(251,188,4,.15);border:1px solid rgba(251,188,4,.25);border-radius:8px;padding:10px;text-align:center;font-size:12px;color:#fde293;">👁 Preview Panel</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="chip chip-blue" style="font-size:12px;">✓ Gratis</span>
+        <span class="chip chip-green" style="font-size:12px;">✓ No install</span>
+        <span class="chip chip-yellow" style="font-size:12px;">✓ Pemula friendly</span>
+        <span class="chip chip-red" style="font-size:12px;">✓ Live preview</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 7 · PROMPTING BASICS                   -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s7">
+  <div class="col max-w-5xl px-10 w-full">
+    <div class="tag-pill anim-1"><span class="dot-sm" style="background:var(--yellow);"></span> Materi Inti · 5 menit</div>
+    <h2 class="anim-1 mb-2">Seni <span class="c-yellow">Prompting</span> yang Efektif 🎯</h2>
+    <p class="anim-2 mb-6">Prompt = instruksi ke AI. Makin baik instruksinya, makin bagus hasilnya.</p>
+    <div class="row gap-4 anim-3 mb-6">
+      <div class="card" style="flex:1;border-top:4px solid var(--blue);text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">🎭</div>
+        <h3 style="color:var(--blue);margin-bottom:4px;">Konteks</h3>
+        <p style="font-size:13px;">Siapa kamu? Untuk apa website ini?</p>
+      </div>
+      <div class="card" style="flex:1;border-top:4px solid var(--red);text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">📋</div>
+        <h3 style="color:var(--red);margin-bottom:4px;">Instruksi</h3>
+        <p style="font-size:13px;">Apa yang ingin dibuat? Section apa saja?</p>
+      </div>
+      <div class="card" style="flex:1;border-top:4px solid var(--yellow);text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">📐</div>
+        <h3 style="color:#8d6700;margin-bottom:4px;">Format</h3>
+        <p style="font-size:13px;">HTML? CSS inline? Satu file?</p>
+      </div>
+      <div class="card" style="flex:1;border-top:4px solid var(--green);text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">⚙️</div>
+        <h3 style="color:var(--green);margin-bottom:4px;">Constraint</h3>
+        <p style="font-size:13px;">Warna apa? Gaya? Batasan khusus?</p>
+      </div>
+    </div>
+    <div class="row gap-4 anim-4">
+      <div style="flex:1;background:#fce8e6;border:1.5px solid #f6aea8;border-radius:14px;padding:18px;">
+        <div style="font-weight:700;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-xmark"></i> Prompt Buruk</div>
+        <p style="font-style:italic;color:#c0392b;font-size:14px;">"Buatkan website portfolio untuk saya."</p>
+        <p style="font-size:12px;color:var(--gray);margin-top:8px;">❌ Terlalu umum → hasil generik, tidak personal</p>
+      </div>
+      <div style="flex:1;background:#e6f4ea;border:1.5px solid #81c995;border-radius:14px;padding:18px;">
+        <div style="font-weight:700;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-check"></i> Prompt Baik</div>
+        <p style="font-style:italic;color:#2d6a3f;font-size:13px;">"Bertindaklah sebagai web developer. Buat HTML/CSS inline portfolio mahasiswa Teknik Informatika bernama Rina. Wajib ada: Hero, About, Skills (Python, Figma, Canva), Projects, dan Contact. Warna dominan biru (#4285F4), font modern, satu file."</p>
+        <p style="font-size:12px;color:var(--gray);margin-top:8px;">✅ Spesifik → hasil personal, siap pakai</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 8 · LIVE BUILD DEMO                    -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s8">
+  <div class="row max-w-5xl px-10 w-full gap-8" style="align-items:center;">
+    <div class="col anim-1" style="flex:1;">
+      <div class="tag-pill"><span class="dot-sm" style="background:var(--blue);"></span> Live Demo · 10 menit</div>
+      <h2 style="margin-bottom:16px;">Sekarang kita <span class="c-blue">Build</span> Bersama! 🔴</h2>
+      <p style="margin-bottom:24px;">Fokus ke layar fasilitator. Amati bagaimana satu prompt menghasilkan website lengkap dalam hitungan detik.</p>
+      <div class="col gap-3">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--light);border:1.5px solid var(--border);border-radius:10px;">
+          <span style="color:var(--blue);font-size:18px;font-weight:700;">1.</span>
+          <span style="color:var(--dark);font-size:15px;">Buka <a href="https://gemini.google.com" target="_blank" style="color:var(--blue);font-weight:600;">gemini.google.com</a> → pilih Canvas</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--light);border:1.5px solid var(--border);border-radius:10px;">
+          <span style="color:var(--red);font-size:18px;font-weight:700;">2.</span>
+          <span style="color:var(--dark);font-size:15px;">Paste prompt → lihat kode tergenerate</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--light);border:1.5px solid var(--border);border-radius:10px;">
+          <span style="color:#8d6700;font-size:18px;font-weight:700;">3.</span>
+          <span style="color:var(--dark);font-size:15px;">Preview → iterasi prompt → lihat perubahan</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--light);border:1.5px solid var(--border);border-radius:10px;">
+          <span style="color:var(--green);font-size:18px;font-weight:700;">4.</span>
+          <span style="color:var(--dark);font-size:15px;">Copy HTML → buka di browser → hasil!</span>
+        </div>
+      </div>
+    </div>
+    <div class="col anim-2" style="flex:1;">
+      <div class="demo-screen">
+        <div class="demo-bar">
+          <div class="demo-dot" style="background:#ff5f57;"></div>
+          <div class="demo-dot" style="background:#febc2e;"></div>
+          <div class="demo-dot" style="background:#28c840;"></div>
+          <div class="demo-url">gemini.google.com/canvas</div>
+        </div>
+        <div class="demo-body">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" style="height:42px;opacity:.4;animation:float 3s ease-in-out infinite;">
+          <span style="font-size:14px;color:var(--gray);font-family:var(--ff-body);">Fasilitator melakukan demo di sini</span>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);animation:pulse-ring 1.5s infinite;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);animation:pulse-ring 1.5s .2s infinite;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);animation:pulse-ring 1.5s .4s infinite;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;background:#e8f0fe;border:1.5px solid var(--blue);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">🎯</span>
+        <p style="font-size:13px;color:#1a56db;margin:0;">Peserta: catat langkah-langkah yang fasilitator lakukan untuk diulang sendiri!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 9 · BUILD YOUR OWN PORTFOLIO          -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s9">
+  <div class="col max-w-5xl px-10 w-full">
+    <div class="tag-pill anim-1"><span class="dot-sm" style="background:var(--green);"></span> Hands-on Utama · 15 menit</div>
+    <h2 class="anim-1 mb-2">🛠️ Build Your <span class="c-green">Own Portfolio!</span></h2>
+    <p class="anim-2 mb-6">Ikuti 5 langkah ini. Fasilitator akan membantu setiap step. Jangan ragu untuk bertanya!</p>
+    <div class="row gap-3 anim-3" style="position:relative;">
+      <div style="position:absolute;top:28px;left:44px;right:44px;height:3px;background:linear-gradient(to right,var(--blue),var(--red),var(--yellow),var(--green),var(--dark));border-radius:2px;z-index:0;"></div>
+      <div class="card center" style="flex:1;z-index:1;padding:20px 14px;">
+        <div class="step-circle bg-blue" style="margin:0 auto 12px;">1</div>
+        <h3 style="font-size:14px;margin-bottom:6px;">Hero Section</h3>
+        <p style="font-size:12px;">Nama, tagline, dan tombol CTA</p>
+      </div>
+      <div class="card center" style="flex:1;z-index:1;padding:20px 14px;">
+        <div class="step-circle bg-red" style="margin:0 auto 12px;">2</div>
+        <h3 style="font-size:14px;margin-bottom:6px;">About Me</h3>
+        <p style="font-size:12px;">Jurusan, minat, dan cerita singkat</p>
+      </div>
+      <div class="card center" style="flex:1;z-index:1;padding:20px 14px;">
+        <div class="step-circle bg-yellow" style="margin:0 auto 12px;">3</div>
+        <h3 style="font-size:14px;margin-bottom:6px;">Skills & Projects</h3>
+        <p style="font-size:12px;">Kemampuan dan karya yang sudah dibuat</p>
+      </div>
+      <div class="card center" style="flex:1;z-index:1;padding:20px 14px;">
+        <div class="step-circle bg-green" style="margin:0 auto 12px;">4</div>
+        <h3 style="font-size:14px;margin-bottom:6px;">Desain & Warna</h3>
+        <p style="font-size:12px;">Iterasi prompt untuk personal touch</p>
+      </div>
+      <div class="card center" style="flex:1;z-index:1;padding:20px 14px;border-color:var(--dark);border-width:2px;">
+        <div class="step-circle bg-dark" style="margin:0 auto 12px;">5</div>
+        <h3 style="font-size:14px;margin-bottom:6px;">Preview & Fix</h3>
+        <p style="font-size:12px;">Buka di browser, rapikan, selesai!</p>
+      </div>
+    </div>
+    <div class="row gap-4 anim-4 mt-6">
+      <div style="flex:1;background:#e6f4ea;border:1.5px solid var(--green);border-radius:12px;padding:16px 18px;">
+        <p style="font-size:13px;color:#2d6a3f;margin:0;"><strong>💡 Tips:</strong> Mulai dengan satu section, baru tambahkan yang lain. Lebih mudah iterasi dari yang sederhana.</p>
+      </div>
+      <div style="flex:1;background:#e8f0fe;border:1.5px solid var(--blue);border-radius:12px;padding:16px 18px;">
+        <p style="font-size:13px;color:#1a56db;margin:0;"><strong>🆘 Bantuan:</strong> Angkat tangan jika stuck. Fasilitator siap membantu setiap peserta secara personal!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 10 · PORTFOLIO SPRINT CHALLENGE        -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s10">
+  <div class="col max-w-5xl px-10 w-full center">
+    <div class="tag-pill anim-1" style="display:inline-flex;"><span class="dot-sm" style="background:var(--red);"></span> Sprint · 5 menit</div>
+    <h2 class="anim-1 mb-2">🏃 Portfolio <span class="c-red">Sprint Challenge!</span></h2>
+    <p class="anim-2 mb-4">Kamu punya <strong>5 menit</strong> untuk meningkatkan portfolio. Pilih minimal 1 tantangan!</p>
+    <div class="row gap-4 anim-3 mb-6" style="justify-content:center;">
+      <div class="card" style="width:200px;text-align:center;border-top:4px solid var(--blue);cursor:pointer;transition:transform .2s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div style="font-size:32px;margin-bottom:10px;">➕</div>
+        <h3 style="font-size:14px;margin-bottom:6px;color:var(--blue);">Section Baru</h3>
+        <p style="font-size:12px;">Tambah Timeline, Gallery, Blog, atau Certificates</p>
+      </div>
+      <div class="card" style="width:200px;text-align:center;border-top:4px solid var(--red);cursor:pointer;transition:transform .2s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div style="font-size:32px;margin-bottom:10px;">🎨</div>
+        <h3 style="font-size:14px;margin-bottom:6px;color:var(--red);">Redesain</h3>
+        <p style="font-size:12px;">Ubah total tema warna dan layout</p>
+      </div>
+      <div class="card" style="width:200px;text-align:center;border-top:4px solid var(--yellow);cursor:pointer;transition:transform .2s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div style="font-size:32px;margin-bottom:10px;">✨</div>
+        <h3 style="font-size:14px;margin-bottom:6px;color:#8d6700;">Animasi</h3>
+        <p style="font-size:12px;">Tambah hover, fade-in, atau scroll effect</p>
+      </div>
+      <div class="card" style="width:200px;text-align:center;border-top:4px solid var(--green);cursor:pointer;transition:transform .2s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div style="font-size:32px;margin-bottom:10px;">🏷️</div>
+        <h3 style="font-size:14px;margin-bottom:6px;color:var(--green);">Personal Branding</h3>
+        <p style="font-size:12px;">Logo, favicon, atau tagline yang unik</p>
+      </div>
+    </div>
+    <div class="anim-4" style="background:var(--light);border:1.5px solid var(--border);border-radius:16px;padding:20px 28px;display:inline-flex;align-items:center;gap:20px;">
+      <div class="col" style="align-items:flex-start;">
+        <span style="font-size:13px;font-weight:600;color:var(--gray);margin-bottom:4px;">⏱ Timer Sprint</span>
+        <div id="timer-display">20:00</div>
+      </div>
+      <div class="col" style="gap:8px;">
+        <button class="btn btn-blue" onclick="startTimer()" style="font-size:14px;padding:10px 20px;">▶ Mulai Timer</button>
+        <button class="btn btn-outline" onclick="resetTimer()" style="font-size:14px;padding:8px 20px;">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 11· FUTURE VISION                     -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s11">
+  <div class="row max-w-5xl px-10 w-full gap-8" style="align-items:center;">
+    <div class="col anim-1" style="flex:1;">
+      <div class="tag-pill"><span class="dot-sm" style="background:var(--green);"></span> Inspirasi · 1 menit</div>
+      <h2 style="font-size:clamp(32px,4.5vw,54px);margin-bottom:16px;">Ini Baru <span class="c-blue">Awal</span> Perjalananmu 🚀</h2>
+      <p style="font-size:16px;line-height:1.7;margin-bottom:28px;">Kamu sudah membuktikan hari ini: AI bukan penghalang, AI adalah <strong style="color:var(--dark);">superpower</strong>-mu. Sekarang bayangkan apa yang bisa kamu raih selanjutnya.</p>
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;background:#e8f0fe;border:1.5px solid var(--blue);border-radius:12px;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" style="height:20px;">
+        <p style="font-size:14px;color:#1a56db;margin:0;font-style:italic;">"The future belongs to those who learn, unlearn, and relearn."</p>
+      </div>
+    </div>
+    <div class="row gap-4 anim-2" style="flex:1;">
+      <div class="vision-box col" style="flex:1;">
+        <p style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:16px;">✅ Hari Ini</p>
+        <div class="vision-item"><span>🤖</span> Belajar Gemini AI</div>
+        <div class="vision-item"><span>🌐</span> Membuat Portfolio</div>
+        <div class="vision-item"><span>✍️</span> Menguasai Prompting</div>
+        <div class="vision-item" style="border:none;"><span>👥</span> Membangun Komunitas</div>
+      </div>
+      <div class="vision-box col" style="flex:1;border-color:var(--blue);background:#e8f0fe;">
+        <p style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:16px;">🚀 Besok & Seterusnya</p>
+        <div class="vision-item" style="border-color:#c5d8fd;"><span>💼</span> Diterima Magang</div>
+        <div class="vision-item" style="border-color:#c5d8fd;"><span>🎓</span> Raih Beasiswa</div>
+        <div class="vision-item" style="border-color:#c5d8fd;"><span>🏆</span> Menang Kompetisi</div>
+        <div class="vision-item" style="border:none;"><span>🌟</span> Karier Profesional</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────────────────── -->
+<!-- SLIDE 12 · THANK YOU                         -->
+<!-- ───────────────────────────────────────────── -->
+<div class="slide" id="s12">
+  <div class="mesh-bg">
+    <div class="blob" style="width:400px;height:400px;background:var(--blue);top:-100px;right:-60px;"></div>
+    <div class="blob" style="width:300px;height:300px;background:var(--green);bottom:-80px;left:-40px;"></div>
+  </div>
+  <div class="col center max-w-3xl px-10" style="position:relative;z-index:1;">
+    <div class="anim-pop">
+      <!-- Google Logo SVG inline -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 92" style="height:44px;margin-bottom:20px;" aria-label="Google">
+        <path fill="#EA4335" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+        <path fill="#FBBC05" d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+        <path fill="#4285F4" d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 7.87 11.17 7.87 7.31 0 11.84-4.51 11.84-13v-3.19h-.34c-2.18 2.69-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-3.61h9.25zm-8.56 20.92c0-7.81-5.21-13.52-11.84-13.52-6.72 0-12.35 5.71-12.35 13.52 0 7.73 5.63 13.36 12.35 13.36 6.63 0 11.84-5.63 11.84-13.36z"/>
+        <path fill="#34A853" d="M225 3v65h-9.5V3h9.5z"/>
+        <path fill="#EA4335" d="M262.02 54.48l7.56 5.04c-2.44 3.61-8.32 9.83-18.48 9.83-12.6 0-22.01-9.74-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.98 14.11l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-23.27-7.98l19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z"/>
+        <path fill="#4285F4" d="M35.29 41.41V32h31.89c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.36 53.89.36 34.43.36 14.97 16.32-.5 35.48-.5c10.5 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.67.03z"/>
+      </svg>
+      <h1 style="font-size:clamp(48px,7vw,80px);margin-bottom:14px;">Terima Kasih! 🎉</h1>
+      <p style="font-size:18px;color:var(--gray);max-width:520px;margin:0 auto 32px;">"Prompt, Code, Launch!" — Kamu sudah membuat portfolio pertamamu dengan AI. Luar biasa!</p>
+      <div style="display:inline-flex;align-items:center;gap:16px;padding:16px 28px;border:1.5px solid var(--border);border-radius:40px;background:rgba(255,255,255,.8);backdrop-filter:blur(8px);">
+        <div class="col" style="align-items:flex-start;">
+          <span style="font-size:17px;font-weight:700;color:var(--dark);">Safira Nur Azkia</span>
+          <span style="font-size:13px;color:var(--gray);margin-top:2px;">Google Student Ambassador · GSAID261639</span>
+        </div>
+        <div style="width:1px;height:36px;background:var(--border);"></div>
+        <div class="col" style="align-items:flex-start;gap:4px;">
+          <span style="font-size:13px;color:var(--gray);">📅 Sabtu, 6 Juni 2026 · 14:15 WIB</span>
+          <span style="font-size:13px;color:var(--gray);">📍 Ruang B3-302 · STT Nurul Fikri</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /stage -->
+
+<!-- Navigation -->
+<div id="nav">
+  <button class="nav-btn" id="btn-prev" title="Previous (←)"><i class="fa-solid fa-chevron-left"></i></button>
+  <div id="dots"></div>
+  <button class="nav-btn" id="btn-next" title="Next (→)"><i class="fa-solid fa-chevron-right"></i></button>
+</div>
+<div id="slide-label"><span id="cur">1</span> / <span id="tot"></span></div>
+
+<script>
+// ─── SLIDE ENGINE ───
+const slides = Array.from(document.querySelectorAll('.slide'));
+const dotsEl  = document.getElementById('dots');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+const curEl   = document.getElementById('cur');
+const totEl   = document.getElementById('tot');
+const TOTAL   = slides.length;
+let cur = 0;
+
+totEl.textContent = TOTAL;
+
+// Build dots
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.title = `Slide ${i+1}`;
+  d.addEventListener('click', () => go(i));
+  dotsEl.appendChild(d);
+});
+const dots = Array.from(dotsEl.children);
+
+function go(next) {
+  if (next < 0 || next >= TOTAL || next === cur) return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('exiting');
+  setTimeout(() => slides[cur >= 0 ? cur : 0].classList.remove('exiting'), 400);
+  cur = next;
+  slides[cur].classList.add('active');
+  dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+  curEl.textContent = cur + 1;
+  btnPrev.disabled = cur === 0;
+  btnNext.disabled = cur === TOTAL - 1;
+}
+
+// init
+btnPrev.disabled = true;
+btnNext.addEventListener('click', () => go(cur + 1));
+btnPrev.addEventListener('click', () => go(cur - 1));
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown','PageDown','Space'].includes(e.code)) { e.preventDefault(); go(cur + 1); }
+  if (['ArrowLeft','ArrowUp','PageUp'].includes(e.code)) { e.preventDefault(); go(cur - 1); }
+});
+
+// ─── POLL ───
+function togglePoll(el) {
+  el.classList.toggle('checked');
+}
+
+// ─── COPY CODE ───
+function copyCode(btn) {
+  const pre = btn.previousElementSibling;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = '✅ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    const range = document.createRange();
+    range.selectNode(pre);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+  });
+}
+
+// ─── SPRINT TIMER ───
+let timerInterval = null;
+let timerSeconds  = 1200;
+const timerEl = document.getElementById('timer-display');
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60), sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    if (timerEl) timerEl.textContent = fmtTime(timerSeconds);
+    if (timerSeconds <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      if (timerEl) { timerEl.textContent = '⏰ DONE!'; timerEl.style.color = 'var(--red)'; }
+    }
+  }, 1000);
+}
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerSeconds = 1200;
+  if (timerEl) { timerEl.textContent = '20:00'; timerEl.style.color = 'var(--blue)'; }
+}
+</script>
+</body>
+</html>
